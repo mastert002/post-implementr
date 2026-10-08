@@ -26,12 +26,6 @@ export const Dashboard = () => {
     loadRecords();
   }, [statusFilter, searchQuery]);
 
-  useEffect(() => {
-    if (!successMessage) return;
-    const timer = setTimeout(() => setSuccessMessage(null), 3000);
-    return () => clearTimeout(timer);
-  }, [successMessage]);
-
   const loadRecords = async () => {
     const params: any = {
       limit: 50,
@@ -170,14 +164,15 @@ export const Dashboard = () => {
       </main>
 
       {successMessage && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
-          onClick={() => setSuccessMessage(null)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full text-center"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="relative bg-white rounded-lg shadow-lg p-6 max-w-sm w-full text-center">
+            <button
+              onClick={() => setSuccessMessage(null)}
+              aria-label="Close"
+              className="absolute top-2 right-3 text-gray-500 hover:text-gray-800 text-xl leading-none"
+            >
+              ×
+            </button>
             <p className="text-lg font-semibold text-green-700 mb-4">{successMessage}</p>
             <button
               onClick={() => setSuccessMessage(null)}
