@@ -9,7 +9,7 @@ import { ConfirmationModal } from '../components/ConfirmationModal';
 
 export const Dashboard = () => {
   const { user, logout } = useAuth();
-  const { recordsList, loading, list, create, confirm } = useRecords();
+  const { recordsList, loading, list, create, confirm, deleteRecord } = useRecords();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,6 +66,16 @@ export const Dashboard = () => {
       await loadRecords();
     } finally {
       setIsConfirming(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Delete this record? This cannot be undone.')) return;
+    try {
+      await deleteRecord(id);
+      await loadRecords();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete record');
     }
   };
 
@@ -129,6 +139,7 @@ export const Dashboard = () => {
           isLoading={loading}
           onConfirm={handleConfirm}
           onViewDetails={handleViewDetails}
+          onDelete={handleDelete}
         />
       </main>
 

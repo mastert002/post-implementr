@@ -2,12 +2,14 @@ import { Record } from '../hooks/useRecords';
 import { StatusBadge } from './StatusBadge';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 interface ImplementationListProps {
   records: Record[];
   isLoading: boolean;
   onConfirm: (id: number) => void;
   onViewDetails: (id: number) => void;
+  onDelete: (id: number) => void;
 }
 
 export const ImplementationList: React.FC<ImplementationListProps> = ({
@@ -15,9 +17,11 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
   isLoading,
   onConfirm,
   onViewDetails,
+  onDelete,
 }) => {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [commentId, setCommentId] = useState<number | null>(null);
+  const { user } = useAuth();
 
   if (isLoading) {
     return <div className="text-center py-8">Loading records...</div>;
@@ -110,6 +114,14 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
               >
                 Report
               </Link>
+              {!record.latest_confirmation_id && record.created_by_user_id === user?.id && (
+                <button
+                  onClick={() => onDelete(record.id)}
+                  className="px-3 py-1 text-sm text-red-600 border border-red-300 rounded hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              )}
             </div>
           </div>
 
