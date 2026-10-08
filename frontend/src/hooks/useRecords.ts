@@ -14,6 +14,9 @@ export interface Record {
   latest_confirmed_at?: string;
   latest_confirmation_notes?: string;
   latest_confirmed_by_email?: string;
+  latest_revert_at?: string;
+  latest_revert_comment?: string;
+  latest_revert_by_email?: string;
 }
 
 export interface Confirmation {

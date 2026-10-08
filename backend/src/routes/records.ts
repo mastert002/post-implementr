@@ -22,7 +22,10 @@ router.get(
         CASE WHEN ${IS_CONFIRMED} THEN c.id END as latest_confirmation_id,
         c.confirmed_at as latest_confirmed_at,
         c.notes as latest_confirmation_notes,
-        cu.email as latest_confirmed_by_email
+        cu.email as latest_confirmed_by_email,
+        pr.reverted_at as latest_revert_at,
+        pr.comment as latest_revert_comment,
+        pr.reverted_by_email as latest_revert_by_email
       FROM implementation_records r
       LEFT JOIN users u ON r.created_by_user_id = u.id
       LEFT JOIN LATERAL (
@@ -32,9 +35,11 @@ router.get(
         LIMIT 1
       ) c ON true
       LEFT JOIN LATERAL (
-        SELECT reverted_at FROM status_reverts
-        WHERE implementation_record_id = r.id
-        ORDER BY reverted_at DESC
+        SELECT sr.reverted_at, sr.comment, ru.email as reverted_by_email
+        FROM status_reverts sr
+        LEFT JOIN users ru ON sr.reverted_by_user_id = ru.id
+        WHERE sr.implementation_record_id = r.id
+        ORDER BY sr.reverted_at DESC
         LIMIT 1
       ) pr ON true
       LEFT JOIN users cu ON c.confirmed_by_user_id = cu.id

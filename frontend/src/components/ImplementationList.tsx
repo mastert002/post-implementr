@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { jiraUrl } from '../utils/jira';
+import { formatDateTime } from '../utils/date';
 
 interface ImplementationListProps {
   records: Record[];
@@ -87,6 +88,8 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
                   isConfirmed={!!record.latest_confirmation_id}
                   confirmedAt={record.latest_confirmed_at}
                   confirmedBy={record.latest_confirmed_by_email}
+                  updatedAt={record.latest_revert_at}
+                  updatedBy={record.latest_revert_by_email}
                 />
               </div>
             </div>
@@ -155,14 +158,19 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
             <div className="bg-gray-50 border-t p-4">
               <h4 className="font-semibold text-sm mb-2">Confirmation History</h4>
               <div className="text-xs text-gray-600">
-                {record.latest_confirmation_id ? (
-                  <div>
-                    <p>Confirmed on {new Date(record.latest_confirmed_at!).toLocaleString()}</p>
+                {record.latest_confirmed_at && (
+                  <div className="mb-2">
+                    <p>Confirmed on {new Date(record.latest_confirmed_at).toLocaleString()}</p>
                     <p>by {record.latest_confirmed_by_email}</p>
                   </div>
-                ) : (
-                  <p>No confirmations yet</p>
                 )}
+                {record.latest_revert_at && (
+                  <div className="mb-2">
+                    <p>Updated on {formatDateTime(record.latest_revert_at)} by {record.latest_revert_by_email}</p>
+                    <p className="whitespace-pre-wrap">Comment: {record.latest_revert_comment}</p>
+                  </div>
+                )}
+                {!record.latest_confirmed_at && !record.latest_revert_at && <p>No history yet</p>}
               </div>
             </div>
           )}

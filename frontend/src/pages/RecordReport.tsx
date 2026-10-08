@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { records } from '../api/client';
 import { jiraUrl } from '../utils/jira';
+import { formatDateTime } from '../utils/date';
 
 interface ReportRecord {
   id: number;
@@ -126,6 +127,10 @@ export const RecordReport = () => {
             {isConfirmed ? (
               <span className="text-green-700 font-medium">
                 Confirmed on production
+              </span>
+            ) : reverts.length > 0 ? (
+              <span className="text-blue-700 font-medium">
+                Updated {formatDateTime(reverts[0].reverted_at)} by {reverts[0].reverted_by_email || 'Unknown'}
               </span>
             ) : (
               <span className="text-yellow-700 font-medium">Pending confirmation</span>

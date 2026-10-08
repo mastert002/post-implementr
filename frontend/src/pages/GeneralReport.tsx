@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { records } from '../api/client';
 import { Record } from '../hooks/useRecords';
 import { jiraUrl } from '../utils/jira';
+import { formatDateTime } from '../utils/date';
 
 export const GeneralReport = () => {
   const [dateFrom, setDateFrom] = useState('');
@@ -161,6 +162,10 @@ export const GeneralReport = () => {
                     <td className="py-2 pr-4">
                       {r.latest_confirmation_id ? (
                         <span className="text-green-700 font-medium">Confirmed</span>
+                      ) : r.latest_revert_at ? (
+                        <span className="text-blue-700 font-medium">
+                          Updated {formatDateTime(r.latest_revert_at)} by {r.latest_revert_by_email}
+                        </span>
                       ) : (
                         <span className="text-yellow-700 font-medium">Pending</span>
                       )}
