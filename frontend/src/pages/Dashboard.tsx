@@ -28,7 +28,7 @@ export const Dashboard = () => {
 
   useEffect(() => {
     if (!successMessage) return;
-    const timer = setTimeout(() => setSuccessMessage(null), 4000);
+    const timer = setTimeout(() => setSuccessMessage(null), 3000);
     return () => clearTimeout(timer);
   }, [successMessage]);
 
@@ -170,8 +170,22 @@ export const Dashboard = () => {
       </main>
 
       {successMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 bg-green-100 border border-green-400 text-green-800 rounded shadow text-sm">
-          {successMessage}
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
+          onClick={() => setSuccessMessage(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-lg font-semibold text-green-700 mb-4">{successMessage}</p>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              OK
+            </button>
+          </div>
         </div>
       )}
 
