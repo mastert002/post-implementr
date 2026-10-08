@@ -19,6 +19,7 @@ export const Dashboard = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [operationCount, setOperationCount] = useState(0);
   const [revertRecordId, setRevertRecordId] = useState<number | null>(null);
   const [isReverting, setIsReverting] = useState(false);
 
@@ -48,6 +49,7 @@ export const Dashboard = () => {
   };
 
   const handleCreateRecord = async (data: any) => {
+    setOperationCount((c) => c + 1);
     setIsCreating(true);
     try {
       await create(data);
@@ -65,6 +67,7 @@ export const Dashboard = () => {
 
   const handleConfirmSubmit = async (notes: string, environment: string, category: string) => {
     if (!selectedRecordId) return;
+    setOperationCount((c) => c + 1);
 
     setIsConfirming(true);
     try {
@@ -78,6 +81,7 @@ export const Dashboard = () => {
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this record? This cannot be undone.')) return;
+    setOperationCount((c) => c + 1);
     try {
       await deleteRecord(id);
       await loadRecords();
@@ -89,6 +93,7 @@ export const Dashboard = () => {
 
   const handleRevertSubmit = async (comment: string) => {
     if (!revertRecordId) return;
+    setOperationCount((c) => c + 1);
     setIsReverting(true);
     try {
       await records.revertToPending(revertRecordId, comment);
@@ -129,7 +134,7 @@ export const Dashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <RecordForm onSubmit={handleCreateRecord} isLoading={isCreating} />
 
-        <BulkUpload onComplete={loadRecords} />
+        <BulkUpload onComplete={loadRecords} resetToken={operationCount} />
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ExcelJS from 'exceljs';
 import { records } from '../api/client';
 
@@ -16,6 +16,7 @@ interface Failure {
 
 interface BulkUploadProps {
   onComplete: () => void;
+  resetToken: number;
 }
 
 const parseWorkbook = async (file: File): Promise<ParsedRow[]> => {
@@ -46,7 +47,7 @@ const parseWorkbook = async (file: File): Promise<ParsedRow[]> => {
   return rows;
 };
 
-export const BulkUpload: React.FC<BulkUploadProps> = ({ onComplete }) => {
+export const BulkUpload: React.FC<BulkUploadProps> = ({ onComplete, resetToken }) => {
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [fileName, setFileName] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
@@ -55,6 +56,13 @@ export const BulkUpload: React.FC<BulkUploadProps> = ({ onComplete }) => {
   const [created, setCreated] = useState(0);
   const [failures, setFailures] = useState<Failure[]>([]);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (isUploading) return;
+    setDone(false);
+    setCreated(0);
+    setFailures([]);
+  }, [resetToken]);
 
   const handleFile = async (file: File) => {
     setFileError(null);
@@ -167,7 +175,14 @@ export const BulkUpload: React.FC<BulkUploadProps> = ({ onComplete }) => {
       )}
 
       {done && (
-        <div className="mt-4 text-sm">
+        <div className="relative mt-4 text-sm">
+          <button
+            onClick={() => setDone(false)}
+            aria-label="Close"
+            className="absolute -top-1 right-0 text-gray-500 hover:text-gray-800 text-lg leading-none"
+          >
+            ×
+          </button>
           <p className="text-green-700 font-medium">Created {created} record{created === 1 ? '' : 's'}.</p>
           {failures.length > 0 && (
             <div className="mt-2">
