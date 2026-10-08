@@ -132,12 +132,6 @@ export const Dashboard = () => {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {successMessage && (
-          <div className="mb-6 p-3 bg-green-100 border border-green-400 text-green-800 rounded text-sm">
-            {successMessage}
-          </div>
-        )}
-
         <RecordForm onSubmit={handleCreateRecord} isLoading={isCreating} />
 
         <BulkUpload onComplete={loadRecords} />
@@ -174,6 +168,12 @@ export const Dashboard = () => {
           onRevert={(id) => setRevertRecordId(id)}
         />
       </main>
+
+      {successMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 bg-green-100 border border-green-400 text-green-800 rounded shadow text-sm">
+          {successMessage}
+        </div>
+      )}
 
       <RevertModal
         isOpen={revertRecordId !== null}
