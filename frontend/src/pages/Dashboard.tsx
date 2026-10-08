@@ -16,10 +16,17 @@ export const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed'>('all');
   const [isCreating, setIsCreating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadRecords();
   }, [statusFilter, searchQuery]);
+
+  useEffect(() => {
+    if (!successMessage) return;
+    const timer = setTimeout(() => setSuccessMessage(null), 4000);
+    return () => clearTimeout(timer);
+  }, [successMessage]);
 
   const loadRecords = async () => {
     const params: any = {
@@ -64,6 +71,7 @@ export const Dashboard = () => {
     try {
       await confirm(selectedRecordId, { notes, environment });
       await loadRecords();
+      setSuccessMessage('Record confirmed successfully');
     } finally {
       setIsConfirming(false);
     }
@@ -74,6 +82,7 @@ export const Dashboard = () => {
     try {
       await deleteRecord(id);
       await loadRecords();
+      setSuccessMessage('Record deleted successfully');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to delete record');
     }
@@ -107,6 +116,12 @@ export const Dashboard = () => {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {successMessage && (
+          <div className="mb-6 p-3 bg-green-100 border border-green-400 text-green-800 rounded text-sm">
+            {successMessage}
+          </div>
+        )}
+
         <RecordForm onSubmit={handleCreateRecord} isLoading={isCreating} />
 
         <BulkUpload onComplete={loadRecords} />
