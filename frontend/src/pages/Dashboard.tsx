@@ -52,6 +52,7 @@ export const Dashboard = () => {
     try {
       await create(data);
       await loadRecords();
+      setSuccessMessage('Record added successfully');
     } finally {
       setIsCreating(false);
     }
