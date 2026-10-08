@@ -3,6 +3,7 @@ import { query } from '../db/client';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { extractJiraKeysFromPR, detectJiraKeys } from '../services/github';
+import { ensureJiraTitles } from '../services/jira';
 
 const router = Router();
 
@@ -81,9 +82,18 @@ router.get(
 
     const result = await query(sqlQuery, params);
 
+    const allKeys = [...new Set(result.rows.flatMap((r: any) => (r.jira_keys ? r.jira_keys.split(',') : [])))] as string[];
+    const titles = await ensureJiraTitles(allKeys);
+    const rows = result.rows.map((r: any) => ({
+      ...r,
+      jira_titles: Object.fromEntries(
+        (r.jira_keys ? r.jira_keys.split(',') : []).filter((k: string) => titles[k]).map((k: string) => [k, titles[k]])
+      ),
+    }));
+
     res.json({
-      records: result.rows,
-      count: result.rows.length,
+      records: rows,
+      count: rows.length,
     });
   })
 );
@@ -133,8 +143,11 @@ router.get(
     const isConfirmed = !!latestConfirmation &&
       (!latestRevert || latestConfirmation.confirmed_at > latestRevert.reverted_at);
 
+    const keys = record.jira_keys ? record.jira_keys.split(',') : [];
+    const titles = await ensureJiraTitles(keys);
+
     res.json({
-      record,
+      record: { ...record, jira_titles: titles },
       confirmations: confirmationsResult.rows,
       reverts: revertsResult.rows,
       is_confirmed: isConfirmed,

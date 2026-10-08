@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { records } from '../api/client';
 import { Record } from '../hooks/useRecords';
-import { jiraUrl } from '../utils/jira';
+import { jiraUrl, jiraLabel } from '../utils/jira';
 import { formatDateTime } from '../utils/date';
 import { downloadExcel } from '../utils/excel';
 
@@ -61,7 +61,9 @@ export const GeneralReport = () => {
         rows: rows.map((r) => ({
           created: formatDateTime(r.created_at),
           pr: r.pr_url,
-          jira: r.jira_keys,
+          jira: r.jira_keys
+            ? r.jira_keys.split(',').map((k) => jiraLabel(k.trim(), r.jira_titles)).join(', ')
+            : '',
           createdBy: r.created_by_email,
           status: statusText(r),
           confirmedAt: r.latest_confirmed_at ? formatDateTime(r.latest_confirmed_at) : '',
@@ -201,7 +203,7 @@ export const GeneralReport = () => {
                             <span key={key}>
                               {i > 0 && ', '}
                               <a href={jiraUrl(key.trim())} target="_blank" rel="noopener noreferrer" className="text-blue-600">
-                                {key.trim()}
+                                {jiraLabel(key.trim(), r.jira_titles)}
                               </a>
                             </span>
                           ))

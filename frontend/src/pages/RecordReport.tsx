@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { records } from '../api/client';
-import { jiraUrl } from '../utils/jira';
+import { jiraUrl, jiraLabel } from '../utils/jira';
 import { formatDateTime } from '../utils/date';
 import { downloadExcel } from '../utils/excel';
 
@@ -12,6 +12,7 @@ interface ReportRecord {
   description?: string;
   created_by_email?: string;
   created_at: string;
+  jira_titles?: { [key: string]: string };
 }
 
 interface ReportRevert {
@@ -89,7 +90,7 @@ export const RecordReport = () => {
         rows: [
           { field: 'Record ID', value: record.id },
           { field: 'PR URL', value: record.pr_url },
-          { field: 'JIRA Tickets', value: jiraKeys.join(', ') || 'None' },
+          { field: 'JIRA Tickets', value: jiraKeys.map((k) => jiraLabel(k, record.jira_titles)).join(', ') || 'None' },
           { field: 'Description', value: record.description || 'None' },
           { field: 'Created', value: `${formatDateTime(record.created_at)} by ${record.created_by_email || 'Unknown'}` },
           {
@@ -174,7 +175,7 @@ export const RecordReport = () => {
                   <span key={key}>
                     {i > 0 && ', '}
                     <a href={jiraUrl(key)} target="_blank" rel="noopener noreferrer" className="text-blue-600">
-                      {key}
+                      {jiraLabel(key, record.jira_titles)}
                     </a>
                   </span>
                 ))

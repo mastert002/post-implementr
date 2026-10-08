@@ -3,7 +3,7 @@ import { StatusBadge } from './StatusBadge';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { jiraUrl } from '../utils/jira';
+import { jiraUrl, jiraLabel } from '../utils/jira';
 import { formatDateTime } from '../utils/date';
 
 interface ImplementationListProps {
@@ -68,7 +68,7 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
                         rel="noopener noreferrer"
                         className="inline-block mr-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 hover:underline"
                       >
-                        {key.trim()}
+                        {jiraLabel(key.trim(), record.jira_titles)}
                       </a>
                     ))}
                   </div>

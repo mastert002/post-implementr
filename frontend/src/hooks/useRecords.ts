@@ -15,6 +15,7 @@ export interface Record {
   latest_confirmation_notes?: string;
   latest_confirmed_by_email?: string;
   latest_confirmation_category?: string;
+  jira_titles?: { [key: string]: string };
   latest_revert_at?: string;
   latest_revert_comment?: string;
   latest_revert_by_email?: string;

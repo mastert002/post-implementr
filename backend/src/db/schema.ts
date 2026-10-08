@@ -30,6 +30,12 @@ CREATE TABLE IF NOT EXISTS confirmations (
 
 ALTER TABLE confirmations ADD COLUMN IF NOT EXISTS category VARCHAR(50);
 
+CREATE TABLE IF NOT EXISTS jira_tickets (
+  jira_key VARCHAR(50) PRIMARY KEY,
+  title TEXT NOT NULL,
+  fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS status_reverts (
   id SERIAL PRIMARY KEY,
   implementation_record_id INTEGER NOT NULL REFERENCES implementation_records(id) ON DELETE CASCADE,

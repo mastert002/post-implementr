@@ -1,62 +1,59 @@
 import axios from 'axios';
-import * as base64 from 'base-64';
-
-interface JiraTicket {
-  key: string;
-  summary: string;
-  status: string;
-  url: string;
-}
+import { query } from '../db/client';
 
 const getJiraClient = () => {
+  const email = process.env.JIRA_EMAIL;
   const token = process.env.JIRA_API_TOKEN;
   const baseUrl = process.env.JIRA_BASE_URL;
 
-  if (!baseUrl) {
-    console.warn('JIRA_BASE_URL not set, JIRA validation disabled');
-    return null;
-  }
-
-  const auth = token
-    ? `Basic ${base64.encode(`${token}:${token}`)}`
-    : undefined;
+  if (!email || !token || !baseUrl) return null;
 
   return axios.create({
     baseURL: `${baseUrl}/rest/api/3`,
-    headers: auth ? { Authorization: auth } : {},
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`,
+      Accept: 'application/json',
+    },
   });
 };
 
-export const validateJiraKey = async (key: string): Promise<JiraTicket | null> => {
+const fetchJiraTitle = async (key: string): Promise<string | null> => {
   try {
     const client = getJiraClient();
     if (!client) return null;
 
-    const response = await client.get(`/issue/${key}`);
-
-    return {
-      key: response.data.key,
-      summary: response.data.fields.summary,
-      status: response.data.fields.status?.name || 'Unknown',
-      url: `${process.env.JIRA_BASE_URL}/browse/${response.data.key}`,
-    };
-  } catch (err) {
-    console.error(`Error validating JIRA key ${key}:`, err);
+    const response = await client.get(`/issue/${key}`, { params: { fields: 'summary' } });
+    return response.data.fields.summary;
+  } catch (err: any) {
+    console.error(`Could not fetch JIRA title for ${key}:`, err.response?.status || err.message);
     return null;
   }
 };
 
-export const validateJiraKeys = async (keys: string[]): Promise<{ [key: string]: JiraTicket | null }> => {
-  const results: { [key: string]: JiraTicket | null } = {};
+export const ensureJiraTitles = async (keys: string[]): Promise<{ [key: string]: string }> => {
+  if (keys.length === 0) return {};
+
+  const cached = await query(
+    'SELECT jira_key, title FROM jira_tickets WHERE jira_key = ANY($1::text[])',
+    [keys]
+  );
+  const titles: { [key: string]: string } = Object.fromEntries(
+    cached.rows.map((r: any) => [r.jira_key, r.title])
+  );
 
   for (const key of keys) {
-    results[key] = await validateJiraKey(key);
+    if (titles[key]) continue;
+
+    const title = await fetchJiraTitle(key);
+    if (title) {
+      await query(
+        `INSERT INTO jira_tickets (jira_key, title) VALUES ($1, $2)
+         ON CONFLICT (jira_key) DO UPDATE SET title = EXCLUDED.title, fetched_at = CURRENT_TIMESTAMP`,
+        [key, title]
+      );
+      titles[key] = title;
+    }
   }
 
-  return results;
-};
-
-export const isValidJiraKeyFormat = (key: string): boolean => {
-  // Simple JIRA key format validation: PROJECT-123
-  return /^[A-Z][A-Z0-9]*-\d+$/.test(key);
+  return titles;
 };
