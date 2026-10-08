@@ -11,6 +11,7 @@ interface ImplementationListProps {
   onConfirm: (id: number) => void;
   onViewDetails: (id: number) => void;
   onDelete: (id: number) => void;
+  onRevert: (id: number) => void;
 }
 
 export const ImplementationList: React.FC<ImplementationListProps> = ({
@@ -19,6 +20,7 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
   onConfirm,
   onViewDetails,
   onDelete,
+  onRevert,
 }) => {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [commentId, setCommentId] = useState<number | null>(null);
@@ -121,7 +123,15 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
               >
                 Report
               </Link>
-              {!record.latest_confirmation_id && record.created_by_user_id === user?.id && (
+              {record.latest_confirmation_id && (
+                <button
+                  onClick={() => onRevert(record.id)}
+                  className="px-3 py-1 text-sm text-yellow-700 border border-yellow-400 rounded hover:bg-yellow-50"
+                >
+                  Set to Pending
+                </button>
+              )}
+              {!record.latest_confirmed_at && record.created_by_user_id === user?.id && (
                 <button
                   onClick={() => onDelete(record.id)}
                   className="px-3 py-1 text-sm text-red-600 border border-red-300 rounded hover:bg-red-50"

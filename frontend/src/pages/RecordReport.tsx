@@ -12,6 +12,13 @@ interface ReportRecord {
   created_at: string;
 }
 
+interface ReportRevert {
+  id: number;
+  reverted_by_email?: string;
+  reverted_at: string;
+  comment: string;
+}
+
 interface ReportConfirmation {
   id: number;
   confirmed_by_email?: string;
@@ -24,6 +31,8 @@ export const RecordReport = () => {
   const { id } = useParams();
   const [record, setRecord] = useState<ReportRecord | null>(null);
   const [confirmations, setConfirmations] = useState<ReportConfirmation[]>([]);
+  const [reverts, setReverts] = useState<ReportRevert[]>([]);
+  const [isConfirmed, setIsConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +45,8 @@ export const RecordReport = () => {
         if (cancelled) return;
         setRecord(response.data.record);
         setConfirmations(response.data.confirmations);
+        setReverts(response.data.reverts);
+        setIsConfirmed(response.data.is_confirmed);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -63,7 +74,6 @@ export const RecordReport = () => {
   }
 
   const jiraKeys = record.jira_keys ? record.jira_keys.split(',').map((k) => k.trim()).filter(Boolean) : [];
-  const latest = confirmations[0];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0">
@@ -113,7 +123,7 @@ export const RecordReport = () => {
 
           <dt className="font-medium text-gray-700">Status</dt>
           <dd>
-            {latest ? (
+            {isConfirmed ? (
               <span className="text-green-700 font-medium">
                 Confirmed on production
               </span>
@@ -147,6 +157,30 @@ export const RecordReport = () => {
               ))}
             </tbody>
           </table>
+        )}
+
+        {reverts.length > 0 && (
+          <>
+            <h2 className="text-lg font-semibold text-gray-900 mt-8 mb-3">Set to Pending History</h2>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="text-left border-b">
+                  <th className="py-2 pr-4 font-medium text-gray-700">Date and time</th>
+                  <th className="py-2 pr-4 font-medium text-gray-700">Changed by</th>
+                  <th className="py-2 font-medium text-gray-700">Comment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reverts.map((r) => (
+                  <tr key={r.id} className="border-b align-top">
+                    <td className="py-2 pr-4">{new Date(r.reverted_at).toLocaleString()}</td>
+                    <td className="py-2 pr-4">{r.reverted_by_email || 'Unknown'}</td>
+                    <td className="py-2 whitespace-pre-wrap">{r.comment}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </div>

@@ -6,6 +6,8 @@ import { extractJiraKeysFromPR, detectJiraKeys } from '../services/github';
 
 const router = Router();
 
+const IS_CONFIRMED = `(c.id IS NOT NULL AND (pr.reverted_at IS NULL OR c.confirmed_at > pr.reverted_at))`;
+
 // Get all records with filters
 router.get(
   '/',
@@ -17,7 +19,7 @@ router.get(
       SELECT
         r.*,
         u.email as created_by_email,
-        c.id as latest_confirmation_id,
+        CASE WHEN ${IS_CONFIRMED} THEN c.id END as latest_confirmation_id,
         c.confirmed_at as latest_confirmed_at,
         c.notes as latest_confirmation_notes,
         cu.email as latest_confirmed_by_email
@@ -29,6 +31,12 @@ router.get(
         ORDER BY confirmed_at DESC
         LIMIT 1
       ) c ON true
+      LEFT JOIN LATERAL (
+        SELECT reverted_at FROM status_reverts
+        WHERE implementation_record_id = r.id
+        ORDER BY reverted_at DESC
+        LIMIT 1
+      ) pr ON true
       LEFT JOIN users cu ON c.confirmed_by_user_id = cu.id
       WHERE 1=1
     `;
@@ -43,9 +51,9 @@ router.get(
     }
 
     if (status === 'confirmed') {
-      sqlQuery += ` AND c.id IS NOT NULL`;
+      sqlQuery += ` AND ${IS_CONFIRMED}`;
     } else if (status === 'pending') {
-      sqlQuery += ` AND c.id IS NULL`;
+      sqlQuery += ` AND NOT ${IS_CONFIRMED}`;
     }
 
     if (date_from) {
@@ -103,9 +111,25 @@ router.get(
       [id]
     );
 
+    const revertsResult = await query(
+      `SELECT sr.*, u.email as reverted_by_email
+       FROM status_reverts sr
+       LEFT JOIN users u ON sr.reverted_by_user_id = u.id
+       WHERE sr.implementation_record_id = $1
+       ORDER BY sr.reverted_at DESC`,
+      [id]
+    );
+
+    const latestConfirmation = confirmationsResult.rows[0];
+    const latestRevert = revertsResult.rows[0];
+    const isConfirmed = !!latestConfirmation &&
+      (!latestRevert || latestConfirmation.confirmed_at > latestRevert.reverted_at);
+
     res.json({
       record,
       confirmations: confirmationsResult.rows,
+      reverts: revertsResult.rows,
+      is_confirmed: isConfirmed,
     });
   })
 );
@@ -231,6 +255,50 @@ router.post(
       console.error('Error in confirm route:', err);
       throw err;
     }
+  })
+);
+
+// Set a confirmed record back to pending (history is kept)
+router.post(
+  '/:id/revert',
+  authenticateToken,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { comment } = req.body;
+    const userId = req.userId;
+
+    if (!comment || !String(comment).trim()) {
+      throw new AppError(400, 'Comment is required to set a record to pending');
+    }
+
+    const recordResult = await query('SELECT id FROM implementation_records WHERE id = $1', [id]);
+    if (recordResult.rows.length === 0) {
+      throw new AppError(404, 'Record not found');
+    }
+
+    const latestConfirmation = await query(
+      'SELECT confirmed_at FROM confirmations WHERE implementation_record_id = $1 ORDER BY confirmed_at DESC LIMIT 1',
+      [id]
+    );
+    const latestRevert = await query(
+      'SELECT reverted_at FROM status_reverts WHERE implementation_record_id = $1 ORDER BY reverted_at DESC LIMIT 1',
+      [id]
+    );
+
+    const confirmedAt = latestConfirmation.rows[0]?.confirmed_at;
+    const revertedAt = latestRevert.rows[0]?.reverted_at;
+    if (!confirmedAt || (revertedAt && revertedAt >= confirmedAt)) {
+      throw new AppError(400, 'Record is not confirmed');
+    }
+
+    const result = await query(
+      `INSERT INTO status_reverts (implementation_record_id, comment, reverted_by_user_id)
+       VALUES ($1, $2, $3)
+       RETURNING id, implementation_record_id, comment, reverted_by_user_id, reverted_at`,
+      [id, String(comment).trim(), userId]
+    );
+
+    res.status(201).json(result.rows[0]);
   })
 );
 

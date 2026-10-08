@@ -6,6 +6,8 @@ import { RecordForm } from '../components/RecordForm';
 import { BulkUpload } from '../components/BulkUpload';
 import { ImplementationList } from '../components/ImplementationList';
 import { ConfirmationModal } from '../components/ConfirmationModal';
+import { RevertModal } from '../components/RevertModal';
+import { records } from '../api/client';
 
 export const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -17,6 +19,8 @@ export const Dashboard = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [revertRecordId, setRevertRecordId] = useState<number | null>(null);
+  const [isReverting, setIsReverting] = useState(false);
 
   useEffect(() => {
     loadRecords();
@@ -88,6 +92,18 @@ export const Dashboard = () => {
     }
   };
 
+  const handleRevertSubmit = async (comment: string) => {
+    if (!revertRecordId) return;
+    setIsReverting(true);
+    try {
+      await records.revertToPending(revertRecordId, comment);
+      await loadRecords();
+      setSuccessMessage('Record set to pending');
+    } finally {
+      setIsReverting(false);
+    }
+  };
+
   const handleViewDetails = (id: number) => {
     // This is where we could expand to show full history
     // For now, it's handled by the ImplementationList component
@@ -155,8 +171,16 @@ export const Dashboard = () => {
           onConfirm={handleConfirm}
           onViewDetails={handleViewDetails}
           onDelete={handleDelete}
+          onRevert={(id) => setRevertRecordId(id)}
         />
       </main>
+
+      <RevertModal
+        isOpen={revertRecordId !== null}
+        onClose={() => setRevertRecordId(null)}
+        onSubmit={handleRevertSubmit}
+        isLoading={isReverting}
+      />
 
       <ConfirmationModal
         isOpen={showConfirmModal}

@@ -47,6 +47,8 @@ export const records = {
     client.get(`/api/records/${id}`),
   confirm: (id: number, data: any) =>
     client.post(`/api/records/${id}/confirm`, data),
+  revertToPending: (id: number, comment: string) =>
+    client.post(`/api/records/${id}/revert`, { comment }),
   getConfirmations: (id: number) =>
     client.get(`/api/records/${id}/confirmations`),
   delete: (id: number) =>

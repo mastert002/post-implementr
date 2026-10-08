@@ -28,6 +28,15 @@ CREATE TABLE IF NOT EXISTS confirmations (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS status_reverts (
+  id SERIAL PRIMARY KEY,
+  implementation_record_id INTEGER NOT NULL REFERENCES implementation_records(id) ON DELETE CASCADE,
+  comment TEXT NOT NULL,
+  reverted_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+  reverted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_status_reverts_record_id ON status_reverts(implementation_record_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_records_created_by ON implementation_records(created_by_user_id);
 CREATE INDEX IF NOT EXISTS idx_implementation_records_created_at ON implementation_records(created_at);
 CREATE INDEX IF NOT EXISTS idx_confirmations_record_id ON confirmations(implementation_record_id);
