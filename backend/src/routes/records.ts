@@ -150,6 +150,26 @@ router.post(
       finalJiraKeys = [...new Set(entries.flatMap((k: string) => detectJiraKeys(k)))].join(',');
     }
 
+    const existingPr = await query(
+      'SELECT id FROM implementation_records WHERE LOWER(RTRIM(pr_url, \'/\')) = LOWER(RTRIM($1, \'/\'))',
+      [pr_url]
+    );
+    if (existingPr.rows.length > 0) {
+      throw new AppError(409, `This PR has already been added (record #${existingPr.rows[0].id})`);
+    }
+
+    const jiraList = finalJiraKeys ? finalJiraKeys.split(',') : [];
+    if (jiraList.length > 0) {
+      const existingJira = await query(
+        'SELECT id, string_to_array(jira_keys, \',\') AS keys FROM implementation_records WHERE string_to_array(jira_keys, \',\') && $1::text[] LIMIT 1',
+        [jiraList]
+      );
+      if (existingJira.rows.length > 0) {
+        const taken = existingJira.rows[0].keys.filter((k: string) => jiraList.includes(k));
+        throw new AppError(409, `JIRA ticket(s) already added: ${taken.join(', ')} (record #${existingJira.rows[0].id})`);
+      }
+    }
+
     const result = await query(
       `INSERT INTO implementation_records (pr_url, jira_keys, description, created_by_user_id)
        VALUES ($1, $2, $3, $4)
