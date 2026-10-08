@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { records } from '../api/client';
+import { jiraUrl } from '../utils/jira';
 
 interface ReportRecord {
   id: number;
@@ -89,7 +90,18 @@ export const RecordReport = () => {
           </dd>
 
           <dt className="font-medium text-gray-700">JIRA Tickets</dt>
-          <dd>{jiraKeys.length ? jiraKeys.join(', ') : 'None'}</dd>
+          <dd>
+            {jiraKeys.length
+              ? jiraKeys.map((key, i) => (
+                  <span key={key}>
+                    {i > 0 && ', '}
+                    <a href={jiraUrl(key)} target="_blank" rel="noopener noreferrer" className="text-blue-600">
+                      {key}
+                    </a>
+                  </span>
+                ))
+              : 'None'}
+          </dd>
 
           <dt className="font-medium text-gray-700">Description</dt>
           <dd className="whitespace-pre-wrap">{record.description || 'None'}</dd>

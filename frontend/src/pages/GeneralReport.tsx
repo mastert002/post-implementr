@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { records } from '../api/client';
 import { Record } from '../hooks/useRecords';
+import { jiraUrl } from '../utils/jira';
 
 export const GeneralReport = () => {
   const [dateFrom, setDateFrom] = useState('');
@@ -144,7 +145,18 @@ export const GeneralReport = () => {
                         {r.pr_url}
                       </a>
                     </td>
-                    <td className="py-2 pr-4">{r.jira_keys || '-'}</td>
+                    <td className="py-2 pr-4">
+                      {r.jira_keys
+                        ? r.jira_keys.split(',').map((key, i) => (
+                            <span key={key}>
+                              {i > 0 && ', '}
+                              <a href={jiraUrl(key.trim())} target="_blank" rel="noopener noreferrer" className="text-blue-600">
+                                {key.trim()}
+                              </a>
+                            </span>
+                          ))
+                        : '-'}
+                    </td>
                     <td className="py-2 pr-4">{r.created_by_email || '-'}</td>
                     <td className="py-2 pr-4">
                       {r.latest_confirmation_id ? (

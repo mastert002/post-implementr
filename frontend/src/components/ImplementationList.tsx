@@ -3,6 +3,7 @@ import { StatusBadge } from './StatusBadge';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { jiraUrl } from '../utils/jira';
 
 interface ImplementationListProps {
   records: Record[];
@@ -57,9 +58,15 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
                 {record.jira_keys && (
                   <div className="mb-2">
                     {record.jira_keys.split(',').map((key) => (
-                      <span key={key} className="inline-block mr-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                      <a
+                        key={key}
+                        href={jiraUrl(key.trim())}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block mr-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 hover:underline"
+                      >
                         {key.trim()}
-                      </span>
+                      </a>
                     ))}
                   </div>
                 )}
