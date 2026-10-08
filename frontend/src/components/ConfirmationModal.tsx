@@ -3,9 +3,11 @@ import { useState } from 'react';
 interface ConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (notes: string, environment: string) => Promise<void>;
+  onConfirm: (notes: string, environment: string, category: string) => Promise<void>;
   isLoading?: boolean;
 }
+
+const CATEGORIES = ['New Feature', 'Enhancement', 'Bug Fix', 'Technical Improvement'];
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isOpen,
@@ -15,11 +17,17 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 }) => {
   const [notes, setNotes] = useState('');
   const [environment, setEnvironment] = useState('production');
+  const [category, setCategory] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!category) {
+      setError('Please select a category');
+      return;
+    }
 
     if (!notes.trim()) {
       setError('Please enter a post implementation comment');
@@ -27,9 +35,10 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     }
 
     try {
-      await onConfirm(notes.trim(), environment);
+      await onConfirm(notes.trim(), environment, category);
       setNotes('');
       setEnvironment('production');
+      setCategory('');
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to confirm');
@@ -55,6 +64,23 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             >
               <option value="production">Production</option>
               <option value="staging">Staging</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category *
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="" disabled>Select a category</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
             </select>
           </div>
 

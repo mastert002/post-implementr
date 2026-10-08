@@ -55,6 +55,7 @@ export const GeneralReport = () => {
           { header: 'Status', key: 'status', width: 48 },
           { header: 'Last confirmed', key: 'confirmedAt', width: 20 },
           { header: 'Confirmed by', key: 'confirmedBy', width: 34 },
+          { header: 'Category', key: 'category', width: 22 },
           { header: 'Post Implementation Comment', key: 'comment', width: 50 },
         ],
         rows: rows.map((r) => ({
@@ -65,6 +66,7 @@ export const GeneralReport = () => {
           status: statusText(r),
           confirmedAt: r.latest_confirmed_at ? formatDateTime(r.latest_confirmed_at) : '',
           confirmedBy: r.latest_confirmed_by_email,
+          category: r.latest_confirmation_category,
           comment: r.latest_confirmation_notes,
         })),
       },
@@ -179,6 +181,7 @@ export const GeneralReport = () => {
                   <th className="py-2 pr-4 font-medium text-gray-700">Status</th>
                   <th className="py-2 pr-4 font-medium text-gray-700">Last confirmed</th>
                   <th className="py-2 pr-4 font-medium text-gray-700">Confirmed by</th>
+                  <th className="py-2 pr-4 font-medium text-gray-700">Category</th>
                   <th className="py-2 pr-4 font-medium text-gray-700">Post Implementation Comment</th>
                   <th className="py-2 font-medium text-gray-700 print:hidden">Report</th>
                 </tr>
@@ -220,6 +223,7 @@ export const GeneralReport = () => {
                       {r.latest_confirmed_at ? new Date(r.latest_confirmed_at).toLocaleString() : '-'}
                     </td>
                     <td className="py-2 pr-4">{r.latest_confirmed_by_email || '-'}</td>
+                    <td className="py-2 pr-4">{r.latest_confirmation_category || '-'}</td>
                     <td className="py-2 pr-4 whitespace-pre-wrap">{r.latest_confirmation_notes || '-'}</td>
                     <td className="py-2 print:hidden">
                       <Link to={`/records/${r.id}`} className="text-blue-600 hover:text-blue-800">

@@ -6,7 +6,9 @@ import { extractJiraKeysFromPR, detectJiraKeys } from '../services/github';
 
 const router = Router();
 
-const IS_CONFIRMED = `(c.id IS NOT NULL AND (pr.reverted_at IS NULL OR c.confirmed_at > pr.reverted_at))`;
+const CONFIRMATION_CATEGORIES = ['New Feature', 'Enhancement', 'Bug Fix', 'Technical Improvement'];
+
+const IS_CONFIRMED =`(c.id IS NOT NULL AND (pr.reverted_at IS NULL OR c.confirmed_at > pr.reverted_at))`;
 
 // Get all records with filters
 router.get(
@@ -22,6 +24,7 @@ router.get(
         CASE WHEN ${IS_CONFIRMED} THEN c.id END as latest_confirmation_id,
         c.confirmed_at as latest_confirmed_at,
         c.notes as latest_confirmation_notes,
+        c.category as latest_confirmation_category,
         cu.email as latest_confirmed_by_email,
         pr.reverted_at as latest_revert_at,
         pr.comment as latest_revert_comment,
@@ -216,11 +219,15 @@ router.post(
   authenticateToken,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
-    const { notes, environment = 'production' } = req.body;
+    const { notes, environment = 'production', category } = req.body;
     const userId = req.userId;
 
     if (!notes || !String(notes).trim()) {
       throw new AppError(400, 'Post implementation comment is required');
+    }
+
+    if (!CONFIRMATION_CATEGORIES.includes(category)) {
+      throw new AppError(400, 'Please select a valid category');
     }
 
     // Verify record exists
@@ -238,10 +245,10 @@ router.post(
 
     try {
       const idResult = await query(
-        `INSERT INTO confirmations (implementation_record_id, confirmed_by_user_id, notes, environment)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO confirmations (implementation_record_id, confirmed_by_user_id, notes, environment, category)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
-        [id, userId, notes || null, environment]
+        [id, userId, notes || null, environment, category]
       );
 
       const confirmationId = idResult.rows[0].id;

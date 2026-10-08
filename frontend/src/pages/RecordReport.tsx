@@ -26,6 +26,7 @@ interface ReportConfirmation {
   confirmed_by_email?: string;
   confirmed_at: string;
   environment: string;
+  category?: string;
   notes?: string;
 }
 
@@ -107,12 +108,14 @@ export const RecordReport = () => {
           { header: 'Date and time', key: 'date', width: 20 },
           { header: 'Confirmed by', key: 'by', width: 34 },
           { header: 'Environment', key: 'env', width: 14 },
+          { header: 'Category', key: 'category', width: 22 },
           { header: 'Post Implementation Comment', key: 'notes', width: 60 },
         ],
         rows: confirmations.map((c) => ({
           date: formatDateTime(c.confirmed_at),
           by: c.confirmed_by_email,
           env: c.environment,
+          category: c.category,
           notes: c.notes,
         })),
       },
@@ -212,6 +215,7 @@ export const RecordReport = () => {
                 <th className="py-2 pr-4 font-medium text-gray-700">Date and time</th>
                 <th className="py-2 pr-4 font-medium text-gray-700">Confirmed by</th>
                 <th className="py-2 pr-4 font-medium text-gray-700">Environment</th>
+                <th className="py-2 pr-4 font-medium text-gray-700">Category</th>
                 <th className="py-2 font-medium text-gray-700">Notes</th>
               </tr>
             </thead>
@@ -221,6 +225,7 @@ export const RecordReport = () => {
                   <td className="py-2 pr-4">{new Date(c.confirmed_at).toLocaleString()}</td>
                   <td className="py-2 pr-4">{c.confirmed_by_email || 'Unknown'}</td>
                   <td className="py-2 pr-4 capitalize">{c.environment}</td>
+                  <td className="py-2 pr-4">{c.category || '-'}</td>
                   <td className="py-2 whitespace-pre-wrap">{c.notes || '-'}</td>
                 </tr>
               ))}

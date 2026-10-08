@@ -68,12 +68,12 @@ export const Dashboard = () => {
     setShowConfirmModal(true);
   };
 
-  const handleConfirmSubmit = async (notes: string, environment: string) => {
+  const handleConfirmSubmit = async (notes: string, environment: string, category: string) => {
     if (!selectedRecordId) return;
 
     setIsConfirming(true);
     try {
-      await confirm(selectedRecordId, { notes, environment });
+      await confirm(selectedRecordId, { notes, environment, category });
       await loadRecords();
       setSuccessMessage('Record confirmed successfully');
     } finally {
