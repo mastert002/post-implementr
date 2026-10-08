@@ -79,6 +79,13 @@ export const Dashboard = () => {
     }
   };
 
+  const handleUploadComplete = async (createdCount: number) => {
+    await loadRecords();
+    if (createdCount > 0) {
+      setSuccessMessage(`${createdCount} record${createdCount === 1 ? '' : 's'} uploaded successfully`);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this record? This cannot be undone.')) return;
     setOperationCount((c) => c + 1);
@@ -134,7 +141,7 @@ export const Dashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <RecordForm onSubmit={handleCreateRecord} isLoading={isCreating} />
 
-        <BulkUpload onComplete={loadRecords} resetToken={operationCount} />
+        <BulkUpload onComplete={handleUploadComplete} resetToken={operationCount} />
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">

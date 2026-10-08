@@ -15,7 +15,7 @@ interface Failure {
 }
 
 interface BulkUploadProps {
-  onComplete: () => void;
+  onComplete: (createdCount: number) => void;
   resetToken: number;
 }
 
@@ -114,7 +114,7 @@ export const BulkUpload: React.FC<BulkUploadProps> = ({ onComplete, resetToken }
     setDone(true);
     setRows([]);
     setFileName('');
-    onComplete();
+    onComplete(createdCount);
   };
 
   return (
