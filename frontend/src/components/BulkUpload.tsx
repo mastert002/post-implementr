@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ExcelJS from 'exceljs';
 import { records } from '../api/client';
 
 interface ParsedRow {
@@ -17,24 +18,38 @@ interface BulkUploadProps {
   onComplete: () => void;
 }
 
-const parseFile = (text: string): ParsedRow[] => {
-  const rows: ParsedRow[] = [];
-  text.split(/\r?\n/).forEach((raw, index) => {
-    const line = raw.trim();
-    if (!line) return;
-    if (index === 0 && line.toLowerCase().startsWith('pr_url')) return;
+const parseWorkbook = async (file: File): Promise<ParsedRow[]> => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load((await file.arrayBuffer()) as any);
+  const sheet = workbook.worksheets[0];
+  if (!sheet) throw new Error('The file has no sheet');
 
-    const commaAt = line.indexOf(',');
-    const pr_url = (commaAt >= 0 ? line.slice(0, commaAt) : line).trim().replace(/^"|"$/g, '');
-    const jira_keys = commaAt >= 0 ? line.slice(commaAt + 1).trim().replace(/^"|"$/g, '') : '';
-    rows.push({ line: index + 1, pr_url, jira_keys });
+  const headerRow = sheet.getRow(1);
+  let prCol = 0;
+  let jiraCol = 0;
+  headerRow.eachCell((cell, colNumber) => {
+    const header = cell.text.trim().toUpperCase();
+    if (header === 'PR_URL') prCol = colNumber;
+    if (header === 'JIRA_URL') jiraCol = colNumber;
   });
+
+  if (!prCol) throw new Error('The template must have a PR_URL column in row 1');
+
+  const rows: ParsedRow[] = [];
+  for (let n = 2; n <= sheet.rowCount; n++) {
+    const row = sheet.getRow(n);
+    const pr_url = row.getCell(prCol).text.trim();
+    const jira_keys = jiraCol ? row.getCell(jiraCol).text.trim() : '';
+    if (!pr_url && !jira_keys) continue;
+    rows.push({ line: n, pr_url, jira_keys });
+  }
   return rows;
 };
 
 export const BulkUpload: React.FC<BulkUploadProps> = ({ onComplete }) => {
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [fileName, setFileName] = useState('');
+  const [fileError, setFileError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [created, setCreated] = useState(0);
@@ -42,12 +57,20 @@ export const BulkUpload: React.FC<BulkUploadProps> = ({ onComplete }) => {
   const [done, setDone] = useState(false);
 
   const handleFile = async (file: File) => {
-    const text = await file.text();
-    setRows(parseFile(text));
-    setFileName(file.name);
+    setFileError(null);
     setCreated(0);
     setFailures([]);
     setDone(false);
+    try {
+      const parsed = await parseWorkbook(file);
+      setRows(parsed);
+      setFileName(file.name);
+      if (parsed.length === 0) setFileError('No rows found. Add PR URLs under the header row.');
+    } catch (err: any) {
+      setRows([]);
+      setFileName('');
+      setFileError(err.message || 'Could not read the Excel file');
+    }
   };
 
   const handleUpload = async () => {
@@ -89,28 +112,38 @@ export const BulkUpload: React.FC<BulkUploadProps> = ({ onComplete }) => {
   return (
     <div className="bg-white rounded-lg shadow p-6 mb-6">
       <h2 className="text-xl font-bold mb-2">Upload PR List</h2>
-      <p className="text-xs text-gray-500 mb-4">
-        CSV or TXT file, one PR per line: <code>https://github.com/owner/repo/pull/123</code> or{' '}
-        <code>https://github.com/owner/repo/pull/123,https://your-site.atlassian.net/browse/PROJ-123</code>.
-        A header line starting with <code>pr_url</code> is skipped.
+      <p className="text-xs text-gray-500 mb-2">
+        Upload Excel file using attached template. PR URL is required but JIRA URL is optional. Enter related PR and
+        Jira Ticket on same row.
       </p>
+      <a
+        href="/Upload_Template.xlsx"
+        download
+        className="text-xs text-blue-600 hover:text-blue-800 underline mb-4 inline-block"
+      >
+        Download template
+      </a>
 
-      <input
-        type="file"
-        accept=".csv,.txt"
-        disabled={isUploading}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleFile(file);
-          e.target.value = '';
-        }}
-        className="text-sm"
-      />
+      <div>
+        <input
+          type="file"
+          accept=".xlsx"
+          disabled={isUploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+            e.target.value = '';
+          }}
+          className="text-sm"
+        />
+      </div>
+
+      {fileError && <p className="mt-4 text-sm text-red-700">{fileError}</p>}
 
       {rows.length > 0 && !isUploading && (
         <div className="mt-4 flex items-center gap-4">
           <span className="text-sm text-gray-700">
-            {fileName}: {rows.length} PR{rows.length === 1 ? '' : 's'} ready
+            {fileName}: {rows.length} record{rows.length === 1 ? '' : 's'} ready
           </span>
           <button
             onClick={handleUpload}
@@ -142,7 +175,7 @@ export const BulkUpload: React.FC<BulkUploadProps> = ({ onComplete }) => {
               <ul className="list-disc ml-6 text-red-700">
                 {failures.map((f) => (
                   <li key={f.line}>
-                    Line {f.line} ({f.pr_url}): {f.error}
+                    Row {f.line} ({f.pr_url || 'no PR URL'}): {f.error}
                   </li>
                 ))}
               </ul>
