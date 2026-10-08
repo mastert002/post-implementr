@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { records } from '../api/client';
 import { jiraUrl } from '../utils/jira';
 import { formatDateTime } from '../utils/date';
+import { downloadExcel } from '../utils/excel';
 
 interface ReportRecord {
   id: number;
@@ -76,17 +77,80 @@ export const RecordReport = () => {
 
   const jiraKeys = record.jira_keys ? record.jira_keys.split(',').map((k) => k.trim()).filter(Boolean) : [];
 
+  const handleExport = () => {
+    downloadExcel(`record-${record.id}_report`, [
+      {
+        name: 'Record',
+        columns: [
+          { header: 'Field', key: 'field', width: 24 },
+          { header: 'Value', key: 'value', width: 80 },
+        ],
+        rows: [
+          { field: 'Record ID', value: record.id },
+          { field: 'PR URL', value: record.pr_url },
+          { field: 'JIRA Tickets', value: jiraKeys.join(', ') || 'None' },
+          { field: 'Description', value: record.description || 'None' },
+          { field: 'Created', value: `${formatDateTime(record.created_at)} by ${record.created_by_email || 'Unknown'}` },
+          {
+            field: 'Status',
+            value: isConfirmed
+              ? 'Confirmed on production'
+              : reverts.length > 0
+                ? `Updated ${formatDateTime(reverts[0].reverted_at)} by ${reverts[0].reverted_by_email || 'Unknown'}`
+                : 'Pending confirmation',
+          },
+        ],
+      },
+      {
+        name: 'Confirmations',
+        columns: [
+          { header: 'Date and time', key: 'date', width: 20 },
+          { header: 'Confirmed by', key: 'by', width: 34 },
+          { header: 'Environment', key: 'env', width: 14 },
+          { header: 'Post Implementation Comment', key: 'notes', width: 60 },
+        ],
+        rows: confirmations.map((c) => ({
+          date: formatDateTime(c.confirmed_at),
+          by: c.confirmed_by_email,
+          env: c.environment,
+          notes: c.notes,
+        })),
+      },
+      {
+        name: 'Set to Pending',
+        columns: [
+          { header: 'Date and time', key: 'date', width: 20 },
+          { header: 'Changed by', key: 'by', width: 34 },
+          { header: 'Comment', key: 'comment', width: 60 },
+        ],
+        rows: reverts.map((r) => ({
+          date: formatDateTime(r.reverted_at),
+          by: r.reverted_by_email,
+          comment: r.comment,
+        })),
+      },
+    ]);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-8 print:shadow-none print:rounded-none">
         <div className="flex items-center justify-between mb-6 print:hidden">
           <Link to="/" className="text-blue-600 hover:text-blue-800 text-sm">Back to dashboard</Link>
-          <button
-            onClick={() => window.print()}
-            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Print / Save as PDF
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Export to Excel
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Print / Save as PDF
+            </button>
+          </div>
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Post Implementation Report</h1>

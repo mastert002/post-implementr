@@ -4,6 +4,7 @@ import { records } from '../api/client';
 import { Record } from '../hooks/useRecords';
 import { jiraUrl } from '../utils/jira';
 import { formatDateTime } from '../utils/date';
+import { downloadExcel } from '../utils/excel';
 
 export const GeneralReport = () => {
   const [dateFrom, setDateFrom] = useState('');
@@ -34,17 +35,62 @@ export const GeneralReport = () => {
 
   const confirmedCount = rows.filter((r) => !!r.latest_confirmation_id).length;
 
+  const statusText = (r: Record) =>
+    r.latest_confirmation_id
+      ? 'Confirmed'
+      : r.latest_revert_at
+        ? `Updated ${formatDateTime(r.latest_revert_at)} by ${r.latest_revert_by_email}`
+        : 'Pending';
+
+  const handleExport = () => {
+    const dateLabel = `${dateFrom || 'start'}_to_${dateTo || 'today'}`;
+    downloadExcel(`general-report_${dateLabel}`, [
+      {
+        name: 'General Report',
+        columns: [
+          { header: 'Created', key: 'created', width: 14 },
+          { header: 'PR URL', key: 'pr', width: 60 },
+          { header: 'JIRA', key: 'jira', width: 20 },
+          { header: 'Created by', key: 'createdBy', width: 34 },
+          { header: 'Status', key: 'status', width: 48 },
+          { header: 'Last confirmed', key: 'confirmedAt', width: 20 },
+          { header: 'Confirmed by', key: 'confirmedBy', width: 34 },
+          { header: 'Post Implementation Comment', key: 'comment', width: 50 },
+        ],
+        rows: rows.map((r) => ({
+          created: formatDateTime(r.created_at),
+          pr: r.pr_url,
+          jira: r.jira_keys,
+          createdBy: r.created_by_email,
+          status: statusText(r),
+          confirmedAt: r.latest_confirmed_at ? formatDateTime(r.latest_confirmed_at) : '',
+          confirmedBy: r.latest_confirmed_by_email,
+          comment: r.latest_confirmation_notes,
+        })),
+      },
+    ]);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0">
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow p-8 print:shadow-none print:rounded-none">
         <div className="flex items-center justify-between mb-6 print:hidden">
           <Link to="/" className="text-blue-600 hover:text-blue-800 text-sm">Back to dashboard</Link>
-          <button
-            onClick={() => window.print()}
-            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Print / Save as PDF
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              disabled={loading || rows.length === 0}
+              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+            >
+              Export to Excel
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Print / Save as PDF
+            </button>
+          </div>
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">General Report</h1>
