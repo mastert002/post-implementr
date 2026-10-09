@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import { jiraUrl, jiraLabel } from '../utils/jira';
 import { formatDateTime } from '../utils/date';
 
+const BUTTON_BASE = 'px-3 py-1.5 text-sm font-medium border rounded-md transition';
+
 interface ImplementationListProps {
   records: Record[];
   isLoading: boolean;
@@ -96,58 +98,62 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-2 mt-3 pt-3 border-t">
+            <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t">
               {!record.latest_confirmation_id && (
                 <button
                   onClick={() => onConfirm(record.id)}
-                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                  className={`${BUTTON_BASE} text-white bg-green-600 border-green-600 hover:bg-green-700`}
                 >
                   Confirm on Prod
                 </button>
               )}
               {record.latest_confirmation_id && (
                 <button
-                  onClick={() => setCommentId(commentId === record.id ? null : record.id)}
-                  className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
-                >
-                  {commentId === record.id ? 'Hide' : 'View'} Comment
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setExpandedId(expandedId === record.id ? null : record.id);
-                  onViewDetails(record.id);
-                }}
-                className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
-              >
-                {expandedId === record.id ? 'Hide' : 'View'} History
-              </button>
-              <Link
-                to={`/records/${record.id}`}
-                className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
-              >
-                Report
-              </Link>
-              {!record.latest_confirmation_id && (
-                <button
-                  onClick={() => onEdit(record)}
-                  className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
-                >
-                  Edit
-                </button>
-              )}
-              {record.latest_confirmation_id && (
-                <button
                   onClick={() => onRevert(record.id)}
-                  className="px-3 py-1 text-sm text-yellow-700 border border-yellow-400 rounded hover:bg-yellow-50"
+                  className={`${BUTTON_BASE} text-yellow-800 bg-yellow-100 border-yellow-400 hover:bg-yellow-200`}
                 >
                   Set to Pending
                 </button>
               )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                {!record.latest_confirmation_id && (
+                  <button
+                    onClick={() => onEdit(record)}
+                    className={`${BUTTON_BASE} text-gray-700 bg-white border-gray-300 hover:bg-gray-50`}
+                  >
+                    Edit
+                  </button>
+                )}
+                {record.latest_confirmation_id && (
+                  <button
+                    onClick={() => setCommentId(commentId === record.id ? null : record.id)}
+                    className={`${BUTTON_BASE} text-gray-700 bg-white border-gray-300 hover:bg-gray-50`}
+                  >
+                    {commentId === record.id ? 'Hide' : 'View'} Comment
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setExpandedId(expandedId === record.id ? null : record.id);
+                    onViewDetails(record.id);
+                  }}
+                  className={`${BUTTON_BASE} text-gray-700 bg-white border-gray-300 hover:bg-gray-50`}
+                >
+                  {expandedId === record.id ? 'Hide' : 'View'} History
+                </button>
+                <Link
+                  to={`/records/${record.id}`}
+                  className={`${BUTTON_BASE} text-gray-700 bg-white border-gray-300 hover:bg-gray-50`}
+                >
+                  Report
+                </Link>
+              </div>
+
               {!record.latest_confirmed_at && record.created_by_user_id === user?.id && (
                 <button
                   onClick={() => onDelete(record.id)}
-                  className="px-3 py-1 text-sm text-red-600 border border-red-300 rounded hover:bg-red-50"
+                  className={`${BUTTON_BASE} ml-auto text-red-600 bg-white border-red-300 hover:bg-red-50`}
                 >
                   Delete
                 </button>
