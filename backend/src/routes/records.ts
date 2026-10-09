@@ -347,6 +347,81 @@ router.get(
   })
 );
 
+// Edit a pending record (not currently confirmed)
+router.put(
+  '/:id',
+  authenticateToken,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { pr_url, jira_keys, description } = req.body;
+
+    if (!pr_url) {
+      throw new AppError(400, 'PR URL is required');
+    }
+
+    if (!pr_url.includes('github.com') || !pr_url.includes('/pull/')) {
+      throw new AppError(400, 'Invalid GitHub PR URL');
+    }
+
+    const recordResult = await query('SELECT id FROM implementation_records WHERE id = $1', [id]);
+    if (recordResult.rows.length === 0) {
+      throw new AppError(404, 'Record not found');
+    }
+
+    const latestConfirmation = await query(
+      'SELECT confirmed_at FROM confirmations WHERE implementation_record_id = $1 ORDER BY confirmed_at DESC LIMIT 1',
+      [id]
+    );
+    const latestRevert = await query(
+      'SELECT reverted_at FROM status_reverts WHERE implementation_record_id = $1 ORDER BY reverted_at DESC LIMIT 1',
+      [id]
+    );
+    const confirmedAt = latestConfirmation.rows[0]?.confirmed_at;
+    const revertedAt = latestRevert.rows[0]?.reverted_at;
+    const isConfirmed = !!confirmedAt && (!revertedAt || confirmedAt > revertedAt);
+    if (isConfirmed) {
+      throw new AppError(400, 'Only pending records can be edited');
+    }
+
+    const existingPr = await query(
+      'SELECT id FROM implementation_records WHERE LOWER(RTRIM(pr_url, \'/\')) = LOWER(RTRIM($1, \'/\')) AND id <> $2',
+      [pr_url, id]
+    );
+    if (existingPr.rows.length > 0) {
+      throw new AppError(409, `This PR has already been added (record #${existingPr.rows[0].id})`);
+    }
+
+    const entries = (jira_keys || '').split(',').map((k: string) => k.trim()).filter((k: string) => k);
+    const invalidKeys = entries.filter((k: string) => detectJiraKeys(k).length === 0);
+    if (invalidKeys.length > 0) {
+      throw new AppError(400, `Invalid JIRA key format: ${invalidKeys.join(', ')}`);
+    }
+    const finalJiraKeys = [...new Set(entries.flatMap((k: string) => detectJiraKeys(k)))].join(',');
+
+    const jiraList = finalJiraKeys ? finalJiraKeys.split(',') : [];
+    if (jiraList.length > 0) {
+      const existingJira = await query(
+        'SELECT id, string_to_array(jira_keys, \',\') AS keys FROM implementation_records WHERE string_to_array(jira_keys, \',\') && $1::text[] AND id <> $2 LIMIT 1',
+        [jiraList, id]
+      );
+      if (existingJira.rows.length > 0) {
+        const taken = existingJira.rows[0].keys.filter((k: string) => jiraList.includes(k));
+        throw new AppError(409, `JIRA ticket(s) already added: ${taken.join(', ')} (record #${existingJira.rows[0].id})`);
+      }
+    }
+
+    const result = await query(
+      `UPDATE implementation_records
+       SET pr_url = $1, jira_keys = $2, description = $3, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING *`,
+      [pr_url, finalJiraKeys, description || null, id]
+    );
+
+    res.json(result.rows[0]);
+  })
+);
+
 // Delete record (only if not confirmed)
 router.delete(
   '/:id',

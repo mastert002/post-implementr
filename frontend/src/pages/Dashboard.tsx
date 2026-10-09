@@ -7,6 +7,8 @@ import { BulkUpload } from '../components/BulkUpload';
 import { ImplementationList } from '../components/ImplementationList';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { RevertModal } from '../components/RevertModal';
+import { EditRecordModal } from '../components/EditRecordModal';
+import type { Record as RecordItem } from '../hooks/useRecords';
 import { records } from '../api/client';
 
 export const Dashboard = () => {
@@ -21,6 +23,8 @@ export const Dashboard = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [operationCount, setOperationCount] = useState(0);
   const [revertRecordId, setRevertRecordId] = useState<number | null>(null);
+  const [editRecord, setEditRecord] = useState<RecordItem | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
 
   useEffect(() => {
@@ -76,6 +80,19 @@ export const Dashboard = () => {
       setSuccessMessage('Record confirmed successfully');
     } finally {
       setIsConfirming(false);
+    }
+  };
+
+  const handleEditSubmit = async (data: { pr_url: string; jira_keys?: string; description?: string }) => {
+    if (!editRecord) return;
+    setOperationCount((c) => c + 1);
+    setIsEditing(true);
+    try {
+      await records.update(editRecord.id, data);
+      await loadRecords();
+      setSuccessMessage('Record updated successfully');
+    } finally {
+      setIsEditing(false);
     }
   };
 
@@ -173,6 +190,7 @@ export const Dashboard = () => {
           onViewDetails={handleViewDetails}
           onDelete={handleDelete}
           onRevert={(id) => setRevertRecordId(id)}
+          onEdit={(record) => setEditRecord(record)}
         />
       </main>
 
@@ -196,6 +214,13 @@ export const Dashboard = () => {
           </div>
         </div>
       )}
+
+      <EditRecordModal
+        record={editRecord}
+        onClose={() => setEditRecord(null)}
+        onSubmit={handleEditSubmit}
+        isLoading={isEditing}
+      />
 
       <RevertModal
         isOpen={revertRecordId !== null}

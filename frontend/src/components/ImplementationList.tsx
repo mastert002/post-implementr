@@ -13,6 +13,7 @@ interface ImplementationListProps {
   onViewDetails: (id: number) => void;
   onDelete: (id: number) => void;
   onRevert: (id: number) => void;
+  onEdit: (record: Record) => void;
 }
 
 export const ImplementationList: React.FC<ImplementationListProps> = ({
@@ -22,6 +23,7 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
   onViewDetails,
   onDelete,
   onRevert,
+  onEdit,
 }) => {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [commentId, setCommentId] = useState<number | null>(null);
@@ -126,6 +128,14 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
               >
                 Report
               </Link>
+              {!record.latest_confirmation_id && (
+                <button
+                  onClick={() => onEdit(record)}
+                  className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Edit
+                </button>
+              )}
               {record.latest_confirmation_id && (
                 <button
                   onClick={() => onRevert(record.id)}
