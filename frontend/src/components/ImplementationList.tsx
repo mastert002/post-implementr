@@ -48,9 +48,11 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
-  // Any signed-in user can delete a pending record. The server re-checks this.
+  // Any signed-in user can delete a pending record, including one that was
+  // confirmed and then set back to pending. latest_confirmation_id is only set
+  // while the record is confirmed. The server re-checks this.
   // TODO: restrict to admins when post-implementr moves into TestManager.
-  const canDelete = (record: Record) => !record.latest_confirmed_at;
+  const canDelete = (record: Record) => !record.latest_confirmation_id;
 
   const deletableIds = records.filter(canDelete).map((r) => r.id);
 

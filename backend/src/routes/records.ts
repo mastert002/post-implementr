@@ -459,10 +459,17 @@ router.post(
 
     const found = await query(
       `SELECT r.id,
-              r.created_by_user_id,
-              EXISTS (SELECT 1 FROM confirmations c
-                       WHERE c.implementation_record_id = r.id) AS has_confirmations
+              (c.id IS NOT NULL AND (pr.reverted_at IS NULL OR c.confirmed_at > pr.reverted_at)) AS is_confirmed
          FROM implementation_records r
+         LEFT JOIN LATERAL (
+           SELECT id, confirmed_at FROM confirmations
+            WHERE implementation_record_id = r.id
+            ORDER BY confirmed_at DESC LIMIT 1
+         ) c ON true
+         LEFT JOIN LATERAL (
+           SELECT MAX(reverted_at) AS reverted_at FROM status_reverts
+            WHERE implementation_record_id = r.id
+         ) pr ON true
         WHERE r.id = ANY($1::int[])`,
       [numericIds]
     );
@@ -475,10 +482,9 @@ router.post(
       const row = byId.get(id);
       if (!row) {
         skipped.push({ id, reason: 'Record not found' });
-      } else if (row.has_confirmations) {
-        // Deliberately any confirmation, not merely a currently-active one. A
-        // record confirmed and later reverted reads as pending, but deleting it
-        // would cascade away the confirmation history that explains why.
+      } else if (row.is_confirmed) {
+        // Only a record that is pending right now can be deleted. A confirmed
+        // record has to be set back to pending first.
         skipped.push({ id, reason: 'Record has been confirmed' });
       } else {
         deletable.push(id);
@@ -524,13 +530,25 @@ router.delete(
 
     const record = recordResult.rows[0];
 
-    // Check if record has confirmations
-    const confirmationsResult = await query(
-      'SELECT * FROM confirmations WHERE implementation_record_id = $1',
+    // Only a record that is pending right now can be deleted. A confirmed
+    // record has to be set back to pending first.
+    const stateResult = await query(
+      `SELECT (c.id IS NOT NULL AND (pr.reverted_at IS NULL OR c.confirmed_at > pr.reverted_at)) AS is_confirmed
+         FROM implementation_records r
+         LEFT JOIN LATERAL (
+           SELECT id, confirmed_at FROM confirmations
+            WHERE implementation_record_id = r.id
+            ORDER BY confirmed_at DESC LIMIT 1
+         ) c ON true
+         LEFT JOIN LATERAL (
+           SELECT MAX(reverted_at) AS reverted_at FROM status_reverts
+            WHERE implementation_record_id = r.id
+         ) pr ON true
+        WHERE r.id = $1`,
       [id]
     );
 
-    if (confirmationsResult.rows.length > 0) {
+    if (stateResult.rows[0]?.is_confirmed) {
       throw new AppError(400, 'Cannot delete record that has been confirmed');
     }
 
