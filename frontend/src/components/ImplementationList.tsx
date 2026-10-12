@@ -2,7 +2,6 @@ import { Record } from '../hooks/useRecords';
 import { StatusBadge } from './StatusBadge';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import { jiraUrl, jiraLabel } from '../utils/jira';
 import { formatDateTime } from '../utils/date';
 
@@ -48,12 +47,10 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const { user } = useAuth();
 
-  // The same rules the single delete enforces, and the same ones the server
-  // re-checks: only a pending record, and only your own.
-  const canDelete = (record: Record) =>
-    !record.latest_confirmed_at && record.created_by_user_id === user?.id;
+  // Any signed-in user can delete a pending record. The server re-checks this.
+  // TODO: restrict to admins when post-implementr moves into TestManager.
+  const canDelete = (record: Record) => !record.latest_confirmed_at;
 
   const deletableIds = records.filter(canDelete).map((r) => r.id);
 

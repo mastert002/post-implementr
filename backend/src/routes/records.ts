@@ -475,8 +475,6 @@ router.post(
       const row = byId.get(id);
       if (!row) {
         skipped.push({ id, reason: 'Record not found' });
-      } else if (row.created_by_user_id !== userId) {
-        skipped.push({ id, reason: 'You can only delete your own records' });
       } else if (row.has_confirmations) {
         // Deliberately any confirmation, not merely a currently-active one. A
         // record confirmed and later reverted reads as pending, but deleting it
@@ -525,11 +523,6 @@ router.delete(
     }
 
     const record = recordResult.rows[0];
-
-    // Only creator can delete
-    if (record.created_by_user_id !== userId) {
-      throw new AppError(403, 'You can only delete your own records');
-    }
 
     // Check if record has confirmations
     const confirmationsResult = await query(
