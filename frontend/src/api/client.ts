@@ -51,6 +51,8 @@ export const records = {
     client.put(`/api/records/${id}`, data),
   revertToPending: (id: number, comment: string) =>
     client.post(`/api/records/${id}/revert`, { comment }),
+  bulkDelete: (ids: number[]) =>
+    client.post('/api/records/bulk-delete', { ids }),
   getConfirmations: (id: number) =>
     client.get(`/api/records/${id}/confirmations`),
   delete: (id: number) =>

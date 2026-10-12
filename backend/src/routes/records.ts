@@ -423,6 +423,91 @@ router.put(
 );
 
 // Delete record (only if not confirmed)
+// Delete several pending records at once.
+//
+// Takes explicit ids rather than "delete everything pending". A single call
+// that clears a filtered set is one misread filter away from destroying work
+// somebody else is waiting on, and there is no undo - confirmations and
+// status_reverts both cascade on delete.
+//
+// Each id is checked against exactly the same rules as the single delete, and
+// a failure is reported per record rather than failing the whole call: being
+// told "3 of 7 could not be deleted, here is which and why" is actionable,
+// where "forbidden" for the batch is not.
+router.post(
+  '/bulk-delete',
+  authenticateToken,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { ids } = req.body as { ids?: unknown };
+    const userId = req.userId;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new AppError(400, 'Provide an array of record ids to delete');
+    }
+    // Bounded so one request cannot hold a serverless function open past its
+    // 30-second limit and leave the caller unsure what was deleted.
+    if (ids.length > 200) {
+      throw new AppError(400, 'Delete at most 200 records at a time');
+    }
+
+    const numericIds = Array.from(
+      new Set(ids.map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0))
+    );
+    if (numericIds.length === 0) {
+      throw new AppError(400, 'No valid record ids were provided');
+    }
+
+    const found = await query(
+      `SELECT r.id,
+              r.created_by_user_id,
+              EXISTS (SELECT 1 FROM confirmations c
+                       WHERE c.implementation_record_id = r.id) AS has_confirmations
+         FROM implementation_records r
+        WHERE r.id = ANY($1::int[])`,
+      [numericIds]
+    );
+
+    const byId = new Map<number, any>(found.rows.map((r: any) => [Number(r.id), r]));
+    const deletable: number[] = [];
+    const skipped: { id: number; reason: string }[] = [];
+
+    for (const id of numericIds) {
+      const row = byId.get(id);
+      if (!row) {
+        skipped.push({ id, reason: 'Record not found' });
+      } else if (row.created_by_user_id !== userId) {
+        skipped.push({ id, reason: 'You can only delete your own records' });
+      } else if (row.has_confirmations) {
+        // Deliberately any confirmation, not merely a currently-active one. A
+        // record confirmed and later reverted reads as pending, but deleting it
+        // would cascade away the confirmation history that explains why.
+        skipped.push({ id, reason: 'Record has been confirmed' });
+      } else {
+        deletable.push(id);
+      }
+    }
+
+    let deleted = 0;
+    if (deletable.length > 0) {
+      const result = await query(
+        'DELETE FROM implementation_records WHERE id = ANY($1::int[])',
+        [deletable]
+      );
+      deleted = result.rowCount ?? deletable.length;
+    }
+
+    res.json({
+      deleted,
+      deleted_ids: deletable,
+      skipped,
+      message:
+        skipped.length === 0
+          ? `${deleted} record${deleted === 1 ? '' : 's'} deleted`
+          : `${deleted} deleted, ${skipped.length} skipped`,
+    });
+  })
+);
+
 router.delete(
   '/:id',
   authenticateToken,

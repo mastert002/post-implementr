@@ -13,7 +13,8 @@ import { records } from '../api/client';
 
 export const Dashboard = () => {
   const { user, logout } = useAuth();
-  const { recordsList, loading, list, create, confirm, deleteRecord } = useRecords();
+  const { recordsList, loading, list, create, confirm, deleteRecord, bulkDeleteRecords } =
+    useRecords();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -115,6 +116,29 @@ export const Dashboard = () => {
     }
   };
 
+  // The server decides each record on its own, so a run can be partly
+  // refused. Report the count it actually deleted and why the rest stayed,
+  // instead of a blanket success.
+  const handleBulkDelete = async (ids: number[]) => {
+    const label = `${ids.length} record${ids.length === 1 ? '' : 's'}`;
+    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return false;
+    setOperationCount((c) => c + 1);
+    try {
+      const result = await bulkDeleteRecords(ids);
+      await loadRecords();
+      const reasons = Array.from(new Set(result.skipped.map((s) => s.reason)));
+      setSuccessMessage(
+        reasons.length === 0
+          ? `${result.deleted} record${result.deleted === 1 ? '' : 's'} deleted successfully`
+          : `${result.deleted} deleted, ${result.skipped.length} skipped (${reasons.join('; ')})`
+      );
+      return true;
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete records');
+      return false;
+    }
+  };
+
   const handleRevertSubmit = async (comment: string) => {
     if (!revertRecordId) return;
     setOperationCount((c) => c + 1);
@@ -189,6 +213,7 @@ export const Dashboard = () => {
           onConfirm={handleConfirm}
           onViewDetails={handleViewDetails}
           onDelete={handleDelete}
+          onBulkDelete={handleBulkDelete}
           onRevert={(id) => setRevertRecordId(id)}
           onEdit={(record) => setEditRecord(record)}
         />

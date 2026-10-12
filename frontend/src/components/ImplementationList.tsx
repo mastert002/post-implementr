@@ -1,6 +1,6 @@
 import { Record } from '../hooks/useRecords';
 import { StatusBadge } from './StatusBadge';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { jiraUrl, jiraLabel } from '../utils/jira';
@@ -14,6 +14,9 @@ interface ImplementationListProps {
   onDelete: (id: number) => void;
   onRevert: (id: number) => void;
   onEdit: (record: Record) => void;
+  // Resolves true once the records are gone, so the selection is only cleared
+  // on a delete that actually happened — not on a cancelled confirm dialog.
+  onBulkDelete?: (ids: number[]) => Promise<boolean>;
 }
 
 interface MenuItem {
@@ -38,11 +41,31 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
   onDelete,
   onRevert,
   onEdit,
+  onBulkDelete,
 }) => {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [commentId, setCommentId] = useState<number | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const { user } = useAuth();
+
+  // The same rules the single delete enforces, and the same ones the server
+  // re-checks: only a pending record, and only your own.
+  const canDelete = (record: Record) =>
+    !record.latest_confirmed_at && record.created_by_user_id === user?.id;
+
+  const deletableIds = records.filter(canDelete).map((r) => r.id);
+
+  // A filter change or a reload can take a selected record off the page. Left
+  // alone its id would stay selected invisibly and travel with the next
+  // delete, so drop anything that is no longer listed and deletable.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const next = prev.filter((id) => deletableIds.includes(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [records]);
 
   if (isLoading) {
     return <div className="text-center py-8">Loading records...</div>;
@@ -56,6 +79,24 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
       </div>
     );
   }
+
+  const selectable = !!onBulkDelete && deletableIds.length > 0;
+  const allSelected = selectable && selectedIds.length === deletableIds.length;
+
+  const toggle = (id: number) =>
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const toggleAll = () => setSelectedIds(allSelected ? [] : deletableIds);
+
+  const runBulkDelete = async () => {
+    if (!onBulkDelete || selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      if (await onBulkDelete(selectedIds)) setSelectedIds([]);
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   const buildMenu = (record: Record): MenuItem[] => {
     const items: MenuItem[] = [];
@@ -80,7 +121,7 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
     });
     items.push({ label: 'Report', to: `/records/${record.id}` });
 
-    if (!record.latest_confirmed_at && record.created_by_user_id === user?.id) {
+    if (canDelete(record)) {
       items.push({ label: 'Delete', tone: 'red', run: () => onDelete(record.id) });
     }
 
@@ -89,14 +130,77 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
 
   return (
     <div className="space-y-3">
+      {selectable && (
+        <div className="bg-white rounded-lg shadow px-4 py-3 flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAll}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Select all pending ({deletableIds.length})
+          </label>
+
+          <span className="text-sm text-gray-500">
+            {selectedIds.length > 0
+              ? `${selectedIds.length} selected`
+              : 'Tick the pending records you want to remove'}
+          </span>
+
+          <div className="ml-auto flex items-center gap-2">
+            {selectedIds.length > 0 && (
+              <button
+                onClick={() => setSelectedIds([])}
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Clear
+              </button>
+            )}
+            <button
+              onClick={runBulkDelete}
+              disabled={selectedIds.length === 0 || isBulkDeleting}
+              className="px-4 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isBulkDeleting
+                ? 'Deleting...'
+                : `Delete selected${selectedIds.length ? ` (${selectedIds.length})` : ''}`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {records.map((record) => {
         const menuItems = buildMenu(record);
         const menuOpen = openMenuId === record.id;
+        const isSelected = selectedIds.includes(record.id);
 
         return (
-          <div key={record.id} className="bg-white rounded-lg shadow hover:shadow-md transition">
+          <div
+            key={record.id}
+            className={`bg-white rounded-lg shadow hover:shadow-md transition ${
+              isSelected ? 'ring-2 ring-red-400' : ''
+            }`}
+          >
             <div className="p-4">
               <div className="flex items-start justify-between gap-4">
+                {selectable && (
+                  <div className="pt-1 flex-shrink-0">
+                    {canDelete(record) ? (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggle(record.id)}
+                        aria-label={'Select ' + record.pr_url}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    ) : (
+                      // Keeps the cards aligned when a row cannot be selected.
+                      <div className="h-4 w-4" />
+                    )}
+                  </div>
+                )}
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <a

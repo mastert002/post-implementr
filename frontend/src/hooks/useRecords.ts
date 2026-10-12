@@ -92,6 +92,27 @@ export const useRecords = () => {
     }
   }, []);
 
+  // Returns the server's per-record outcome so the caller can say what was
+  // skipped and why, rather than reporting a flat success for a partial result.
+  const bulkDeleteRecords = useCallback(async (ids: number[]) => {
+    setError(null);
+    try {
+      const { data } = await records.bulkDelete(ids);
+      const removed = new Set<number>(data.deleted_ids ?? []);
+      setRecordsList(prev => prev.filter(r => !removed.has(r.id)));
+      return data as {
+        deleted: number;
+        deleted_ids: number[];
+        skipped: { id: number; reason: string }[];
+        message: string;
+      };
+    } catch (err: any) {
+      const message = err.response?.data?.error || 'Failed to delete records';
+      setError(message);
+      throw err;
+    }
+  }, []);
+
   const deleteRecord = useCallback(async (id: number) => {
     setError(null);
     try {
@@ -113,5 +134,6 @@ export const useRecords = () => {
     getDetail,
     confirm,
     deleteRecord,
+    bulkDeleteRecords,
   };
 };
