@@ -243,8 +243,6 @@ export const ImplementationList: React.FC<ImplementationListProps> = ({
                     isConfirmed={!!record.latest_confirmation_id}
                     confirmedAt={record.latest_confirmed_at}
                     confirmedBy={record.latest_confirmed_by_email}
-                    updatedAt={record.latest_revert_at}
-                    updatedBy={record.latest_revert_by_email}
                   />
 
                   <div className="relative">
